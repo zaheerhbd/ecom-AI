@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <NuGetAudit>false</NuGetAudit>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1902;NETSDK1138</WarningsNotAsErrors>
+  </PropertyGroup>
+</Project>

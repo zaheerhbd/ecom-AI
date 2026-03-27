@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Skinet RAG Plan</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.45;
+      color: #1f2937;
+      margin: 40px;
+    }
+    h1, h2, h3 {
+      color: #111827;
+      margin-bottom: 8px;
+    }
+    h1 {
+      font-size: 28px;
+      border-bottom: 2px solid #e5e7eb;
+      padding-bottom: 10px;
+    }
+    h2 {
+      font-size: 20px;
+      margin-top: 28px;
+    }
+    p, li {
+      font-size: 14px;
+    }
+    ul {
+      margin-top: 6px;
+    }
+    .muted {
+      color: #4b5563;
+    }
+    .box {
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+      padding: 12px 14px;
+      border-radius: 6px;
+      margin: 12px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #d1d5db;
+      text-align: left;
+      vertical-align: top;
+      padding: 8px;
+      font-size: 13px;
+    }
+    th {
+      background: #f3f4f6;
+    }
+    code {
+      background: #f3f4f6;
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Skinet RAG Plan</h1>
+  <p class="muted">Goal: add a portfolio-worthy Retrieval-Augmented Generation feature to Skinet that helps shoppers ask natural-language questions about products, policies, and shopping decisions.</p>
+
+  <h2>1. Recommended First Use Case</h2>
+  <div class="box">
+    <strong>Build an AI Shopping Assistant first.</strong>
+    <p>Primary jobs:</p>
+    <ul>
+      <li>Answer product questions in plain language.</li>
+      <li>Recommend products by budget, type, brand, or use case.</li>
+      <li>Explain why a product was suggested.</li>
+      <li>Answer simple policy questions using curated store documentation.</li>
+    </ul>
+  </div>
+  <p>This is the best first RAG feature because it is useful, easy to demo, and safer than starting with autonomous actions.</p>
+
+  <h2>2. Data Sources for Retrieval</h2>
+  <table>
+    <tr>
+      <th>Source</th>
+      <th>Use in RAG</th>
+      <th>Notes</th>
+    </tr>
+    <tr>
+      <td><code>Products</code></td>
+      <td>Main catalog retrieval</td>
+      <td>Name, description, price, brand, type, image URL</td>
+    </tr>
+    <tr>
+      <td><code>ProductBrands</code>, <code>ProductTypes</code></td>
+      <td>Extra product metadata</td>
+      <td>Helps with filtering and explanation</td>
+    </tr>
+    <tr>
+      <td>Store policy documents</td>
+      <td>Support answers</td>
+      <td>Shipping, returns, payment, delivery FAQs</td>
+    </tr>
+    <tr>
+      <td><code>DeliveryMethods</code></td>
+      <td>Shipping guidance</td>
+      <td>Useful for checkout and delivery questions</td>
+    </tr>
+  </table>
+  <p>Do not put baskets, orders, or user-specific records into the first public RAG index. Those are better handled later with authenticated tool calls.</p>
+
+  <h2>3. Architecture</h2>
+  <ul>
+    <li><strong>Client:</strong> add a chat panel or assistant widget in Angular.</li>
+    <li><strong>API:</strong> add an AI endpoint in the .NET API, for example <code>POST /api/ai/chat</code>.</li>
+    <li><strong>Retriever:</strong> build embeddings for product and policy documents, store them in a vector store.</li>
+    <li><strong>Generator:</strong> send the user question plus retrieved context to the model.</li>
+    <li><strong>Response:</strong> return answer text, cited products, and optional suggested actions.</li>
+  </ul>
+
+  <h2>4. Retrieval Strategy</h2>
+  <ul>
+    <li>Chunk product and policy content into short searchable documents.</li>
+    <li>Store document text plus metadata such as product id, brand, type, price, and URL.</li>
+    <li>Use hybrid filtering when possible: semantic retrieval plus structured filters like price, brand, and type.</li>
+    <li>Return top matching chunks and pass only relevant context to the model.</li>
+  </ul>
+
+  <h2>5. Suggested Output Shape</h2>
+  <div class="box">
+    <p>Return a structured response from the AI endpoint:</p>
+    <ul>
+      <li><code>answer</code>: natural-language reply</li>
+      <li><code>products</code>: matched products with ids and display data</li>
+      <li><code>sources</code>: policy or catalog sources used</li>
+      <li><code>followUpSuggestions</code>: optional next prompts</li>
+    </ul>
+  </div>
+
+  <h2>6. Rollout Plan</h2>
+  <h3>Phase 1</h3>
+  <ul>
+    <li>Add product and policy ingestion.</li>
+    <li>Generate embeddings for product catalog and store policies.</li>
+    <li>Expose a read-only assistant endpoint.</li>
+    <li>Show cited products and suggested next actions in the UI.</li>
+  </ul>
+
+  <h3>Phase 2</h3>
+  <ul>
+    <li>Add authenticated tool-based features for signed-in users.</li>
+    <li>Support questions like “Where is my order?” or “What is in my basket?” via secure API tools, not public RAG documents.</li>
+  </ul>
+
+  <h2>7. Portfolio Value</h2>
+  <ul>
+    <li>Shows full-stack work beyond CRUD.</li>
+    <li>Demonstrates practical AI architecture, not just a generic chatbot.</li>
+    <li>Lets you discuss embeddings, retrieval quality, security boundaries, and hallucination control in interviews.</li>
+  </ul>
+
+  <h2>8. Success Criteria</h2>
+  <ul>
+    <li>Users can ask shopping questions in natural language.</li>
+    <li>The assistant returns relevant products and grounded explanations.</li>
+    <li>Policy answers come from approved documents rather than free-form guessing.</li>
+    <li>The first release is read-only and safe for demo and portfolio use.</li>
+  </ul>
+
+  <h2>9. Recommended Next Build Slice</h2>
+  <div class="box">
+    <strong>Implement first:</strong> product catalog + store policy RAG assistant.
+    <p>Skip agentic actions in v1. Add order and basket tool-calling only after the read-only assistant works well.</p>
+  </div>
+</body>
+</html>
