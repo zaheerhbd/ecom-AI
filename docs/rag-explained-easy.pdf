@@ -1,0 +1,140 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Length 2732 >>
+stream
+BT
+/F1 16 Tf
+50 820 Td
+(RAG in Easy Language) Tj
+/F1 11 Tf
+1 0 0 1 50 800 Tm
+() Tj
+1 0 0 1 50 786 Tm
+(RAG means:) Tj
+1 0 0 1 50 772 Tm
+(R = Retrieval) Tj
+1 0 0 1 50 758 Tm
+(A = Augmented) Tj
+1 0 0 1 50 744 Tm
+(G = Generation) Tj
+1 0 0 1 50 730 Tm
+() Tj
+1 0 0 1 50 716 Tm
+(Simple idea:) Tj
+1 0 0 1 50 702 Tm
+(RAG is like an open-book exam.) Tj
+1 0 0 1 50 688 Tm
+(Instead of answering only from memory, the system first looks up the right information, then answers.) Tj
+1 0 0 1 50 674 Tm
+() Tj
+1 0 0 1 50 660 Tm
+(Real-life example:) Tj
+1 0 0 1 50 646 Tm
+(Imagine you work in a shoe store.) Tj
+1 0 0 1 50 632 Tm
+(A customer asks: Do you have cheap hats under $20 and what is the fastest delivery?) Tj
+1 0 0 1 50 618 Tm
+() Tj
+1 0 0 1 50 604 Tm
+(Without RAG:) Tj
+1 0 0 1 50 590 Tm
+(- you may guess) Tj
+1 0 0 1 50 576 Tm
+(- you may forget exact prices) Tj
+1 0 0 1 50 562 Tm
+(- you may say the wrong shipping time) Tj
+1 0 0 1 50 548 Tm
+() Tj
+1 0 0 1 50 534 Tm
+(With RAG:) Tj
+1 0 0 1 50 520 Tm
+(1. you go to the product shelf and delivery sheet) Tj
+1 0 0 1 50 506 Tm
+(2. you find the correct product and shipping details) Tj
+1 0 0 1 50 492 Tm
+(3. you read the exact information) Tj
+1 0 0 1 50 478 Tm
+(4. then you answer the customer) Tj
+1 0 0 1 50 464 Tm
+() Tj
+1 0 0 1 50 450 Tm
+(How this project works:) Tj
+1 0 0 1 50 436 Tm
+(1. The user asks a question in AI-Lab.) Tj
+1 0 0 1 50 422 Tm
+(   Example: show me hats under 20) Tj
+1 0 0 1 50 408 Tm
+() Tj
+1 0 0 1 50 394 Tm
+(2. AiChatService reads the question.) Tj
+1 0 0 1 50 380 Tm
+() Tj
+1 0 0 1 50 366 Tm
+(3. The system understands the question type.) Tj
+1 0 0 1 50 352 Tm
+(   It checks:) Tj
+1 0 0 1 50 338 Tm
+(   - is this about products?) Tj
+1 0 0 1 50 324 Tm
+(   - is this about delivery?) Tj
+1 0 0 1 50 310 Tm
+(   - is the user asking for cheap items?) Tj
+1 0 0 1 50 296 Tm
+(   - is there a price limit like under 20?) Tj
+1 0 0 1 50 282 Tm
+() Tj
+1 0 0 1 50 268 Tm
+(4. AiDocumentService prepares store information as documents.) Tj
+1 0 0 1 50 254 Tm
+(   Example product document:) Tj
+1 0 0 1 50 240 Tm
+(   - Product: Green React Woolen Hat) Tj
+1 0 0 1 50 226 Tm
+(   - Brand: React) Tj
+1 0 0 1 50 212 Tm
+(   - Type: Hat) Tj
+1 0 0 1 50 198 Tm
+(   - Price: $8) Tj
+1 0 0 1 50 184 Tm
+() Tj
+1 0 0 1 50 170 Tm
+(   Example delivery document:) Tj
+1 0 0 1 50 156 Tm
+(   - Delivery option: UPS1) Tj
+1 0 0 1 50 142 Tm
+(   - Delivery time: 1-2 Days) Tj
+1 0 0 1 50 128 Tm
+(   - Cost: $10) Tj
+1 0 0 1 50 114 Tm
+() Tj
+1 0 0 1 50 100 Tm
+(5. AiRetrieverService breaks documents into smaller pieces called chunks.) Tj
+1 0 0 1 50 86 Tm
+(   Why? Smaller pieces make it easier to find the exact useful part.) Tj
+1 0 0 1 50 72 Tm
+() Tj
+1 0 0 1 50 58 Tm
+(6. The question and chunks are turned into vectors.) Tj
+ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n `n0000000058 00000 n `n0000000115 00000 n `n0000000241 00000 n `n0000000311 00000 n `ntrailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+3095
+%%EOF

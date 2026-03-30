@@ -54,7 +54,7 @@ namespace Infrastructure.Services
             if (existingOrder != null)
             {
                 _context.Orders.Remove(existingOrder);
-                await _paymentService.CreateOrUpdatePaymentIntent(basket.PaymentIntentId);
+                await _paymentService.CreateOrUpdatePaymentIntent(basketId);
             }
 
             _context.Orders.Add(order);

@@ -25,6 +25,7 @@ export class CheckoutReviewComponent implements OnInit {
       this.appStepper.next();
     }, error => {
       console.log(error);
+      this.toastr.error(error?.error?.message || 'Unable to initialize payment. Check your Stripe/API configuration.');
     })
   }
 

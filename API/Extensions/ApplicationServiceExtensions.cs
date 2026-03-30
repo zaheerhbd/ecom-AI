@@ -18,6 +18,7 @@ namespace API.Extensions
             services.AddScoped<IPaymentService, PaymentService>();
             services.AddScoped<IProductService, ProductService>();
             services.AddScoped<IAiDocumentService, AiDocumentService>();
+            services.AddScoped<IAiRetrieverService, AiRetrieverService>();
             services.AddScoped<IAiChatService, AiChatService>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped<IProductRepository, ProductRepository>();

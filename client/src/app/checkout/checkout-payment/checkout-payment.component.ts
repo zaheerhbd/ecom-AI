@@ -78,6 +78,12 @@ export class CheckoutPaymentComponent implements AfterViewInit, OnDestroy {
   async submitOrder() {
     this.loading = true;
     const basket = this.basketService.getCurrentBasketValue();
+    if (!basket?.clientSecret) {
+      this.toastr.error('Payment could not be initialized. Please go back to review and try again.');
+      this.loading = false;
+      return;
+    }
+
     try {
       const createdOrder = await this.createOrder(basket);
       const paymentResult = await this.confirmPaymentWithStripe(basket);
@@ -91,6 +97,7 @@ export class CheckoutPaymentComponent implements AfterViewInit, OnDestroy {
       this.loading = false;
     } catch (error) {
       console.log(error);
+      this.toastr.error(error?.error?.message || error?.message || 'There was a problem placing your order.');
       this.loading = false;
     }
   }
