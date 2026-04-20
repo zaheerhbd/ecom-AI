@@ -11,6 +11,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using StackExchange.Redis;
+ 
 
 namespace API
 {
@@ -27,6 +28,8 @@ namespace API
         {
             services.AddAutoMapper(typeof(MappingProfiles));
             services.AddControllers();
+            services.AddHttpClient();
+            services.AddMemoryCache();
             services.AddDbContext<StoreContext>(x =>
                 x.UseNpgsql(_config.GetConnectionString("DefaultConnection")));
             services.AddDbContext<AppIdentityDbContext>(x => 
@@ -42,6 +45,7 @@ namespace API
             services.AddApplicationServices();
             services.AddIdentityServices(_config);
             services.AddSwaggerDocumentation();
+            services.AddHttpClient();
             services.AddCors(opt =>
             {
                 opt.AddPolicy("CorsPolicy", policy =>

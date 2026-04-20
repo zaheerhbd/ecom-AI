@@ -18,8 +18,11 @@ namespace API.Extensions
             services.AddScoped<IPaymentService, PaymentService>();
             services.AddScoped<IProductService, ProductService>();
             services.AddScoped<IAiDocumentService, AiDocumentService>();
+            services.AddScoped<LocalHashEmbeddingService>();
+            services.AddScoped<IAiEmbeddingService, OpenAiEmbeddingService>();
             services.AddScoped<IAiRetrieverService, AiRetrieverService>();
             services.AddScoped<IAiChatService, AiChatService>();
+            services.AddScoped<IAzureAiSearchService, AzureAiSearchService>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped<IProductRepository, ProductRepository>();
             services.AddScoped<IBasketRepository, BasketRepository>();

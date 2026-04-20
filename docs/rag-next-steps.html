@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>eCOM-AI RAG Next Steps</title>
+  <style>
+    :root {
+      --text: #1f2937;
+      --muted: #4b5563;
+      --accent: #0f766e;
+      --line: #d1d5db;
+      --bg: #ffffff;
+      --soft: #f3f4f6;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.45;
+    }
+
+    .page {
+      padding: 40px 52px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 28px;
+      color: var(--accent);
+    }
+
+    .subtitle {
+      margin: 0 0 24px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    h2 {
+      margin: 24px 0 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--line);
+      font-size: 18px;
+    }
+
+    ul {
+      margin: 8px 0 0 20px;
+      padding: 0;
+    }
+
+    li {
+      margin: 8px 0;
+    }
+
+    .note {
+      margin-top: 18px;
+      padding: 12px 14px;
+      background: var(--soft);
+      border-left: 4px solid var(--accent);
+      font-size: 14px;
+    }
+
+    .status {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 1px 8px;
+      border-radius: 999px;
+      background: #e6fffb;
+      color: #115e59;
+      font-size: 12px;
+      vertical-align: middle;
+    }
+
+    @page {
+      size: A4;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>eCOM-AI RAG Next Steps</h1>
+    <p class="subtitle">Project snapshot generated on April 19, 2026</p>
+
+    <h2>What Is Already Working</h2>
+    <ul>
+      <li>Azure AI Search service is created and reachable.</li>
+      <li>Product index exists and is aligned closely enough to accept product data.</li>
+      <li>Products from PostgreSQL can be synced into Azure AI Search.</li>
+      <li>Documents are visible in Azure Search Explorer. <span class="status">Done</span></li>
+      <li>AI document generation exists for products and delivery methods.</li>
+      <li>Embedding generation exists with OpenAI and a local fallback.</li>
+      <li>Retriever logic exists and can rank relevant documents.</li>
+      <li>`POST /ai/chat` exists, but currently returns a formatted answer rather than a true LLM-generated grounded answer.</li>
+    </ul>
+
+    <h2>Highest-Priority Next Steps</h2>
+    <ul>
+      <li>Add a real generation step in `AiChatService` so retrieved context is sent to an LLM and the answer is generated from that context.</li>
+      <li>Build a grounding prompt that tells the model to answer only from retrieved product and delivery data.</li>
+      <li>Return source citations clearly in the AI response so the frontend can show where the answer came from.</li>
+      <li>Add confidence handling for weak retrieval cases so the assistant can say it does not know instead of bluffing.</li>
+    </ul>
+
+    <h2>Search And Retrieval Tasks</h2>
+    <ul>
+      <li>Decide whether Azure AI Search will be used only for product search or also for RAG retrieval.</li>
+      <li>If Azure AI Search will be part of RAG, choose between:
+        keyword search only,
+        hybrid search,
+        or vector search with embeddings.</li>
+      <li>Normalize the index schema so field types are intentional and documented.</li>
+      <li>Consider improving `createdAt` to a date field later if sorting/filtering by date becomes important.</li>
+    </ul>
+
+    <h2>Operational Tasks</h2>
+    <ul>
+      <li>Add automatic sync for product create, update, and delete events.</li>
+      <li>Add a rebuild or reindex command for recovery scenarios.</li>
+      <li>Add structured logging around AI retrieval and answer generation.</li>
+      <li>Add tests for document shaping, retrieval behavior, and Azure sync mapping.</li>
+    </ul>
+
+    <h2>Suggested Implementation Order</h2>
+    <ul>
+      <li>Step 1: Make `/ai/chat` a true RAG endpoint using the current retriever.</li>
+      <li>Step 2: Improve answer quality with better prompts and citation formatting.</li>
+      <li>Step 3: Decide whether to keep in-memory retrieval or move chat retrieval into Azure AI Search.</li>
+      <li>Step 4: Add automatic sync hooks for product changes.</li>
+      <li>Step 5: Connect the frontend to the improved AI response flow.</li>
+    </ul>
+
+    <div class="note">
+      Recommended immediate move: keep the current retriever for now and add the missing LLM generation step first. That is the fastest path from "retrieval exists" to "real RAG works."
+    </div>
+  </div>
+</body>
+</html>
