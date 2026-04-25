@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>RAG Issue Fix - Cheapest Delivery Option</title>
+  <style>
+    @page {
+      margin: 0.7in;
+    }
+
+    body {
+      color: #1f2933;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 13px;
+      line-height: 1.48;
+      margin: 0;
+    }
+
+    h1 {
+      color: #102a43;
+      font-size: 26px;
+      margin: 0 0 6px;
+    }
+
+    h2 {
+      border-bottom: 1px solid #d9e2ec;
+      color: #243b53;
+      font-size: 17px;
+      margin: 24px 0 8px;
+      padding-bottom: 4px;
+    }
+
+    h3 {
+      color: #334e68;
+      font-size: 14px;
+      margin: 16px 0 6px;
+    }
+
+    p {
+      margin: 6px 0;
+    }
+
+    ul {
+      margin: 6px 0 10px 20px;
+      padding: 0;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    code {
+      background: #f0f4f8;
+      border-radius: 3px;
+      color: #102a43;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+      padding: 1px 4px;
+    }
+
+    pre {
+      background: #102a43;
+      border-radius: 6px;
+      color: #f0f4f8;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 11px;
+      line-height: 1.45;
+      margin: 10px 0;
+      overflow-wrap: break-word;
+      padding: 12px;
+      white-space: pre-wrap;
+    }
+
+    table {
+      border-collapse: collapse;
+      margin: 10px 0;
+      width: 100%;
+    }
+
+    th,
+    td {
+      border: 1px solid #bcccdc;
+      padding: 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #d9e2ec;
+      color: #102a43;
+    }
+
+    .subtitle {
+      color: #52606d;
+      font-size: 13px;
+      margin-bottom: 18px;
+    }
+
+    .summary {
+      background: #f0f4f8;
+      border-left: 4px solid #2f80ed;
+      margin: 14px 0;
+      padding: 10px 12px;
+    }
+
+    .pass {
+      color: #0b6b3a;
+      font-weight: bold;
+    }
+
+    .warn {
+      color: #9a3412;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>RAG Issue Fix: Cheapest Delivery Option</h1>
+  <p class="subtitle">Project: eCOM-AI | Area: AI chat retrieval and answer ranking</p>
+
+  <div class="summary">
+    <p><strong>Short version:</strong> The app was retrieving the right delivery sources, but it ranked them by AI similarity score only. For a cheapest-price question, we fixed this by reordering retrieved matches using the real numeric <code>price</code> metadata.</p>
+  </div>
+
+  <h2>1. The User Question</h2>
+  <p>The problematic question was:</p>
+  <pre>Which delivery option is cheapest?</pre>
+  <p>The expected answer should be <code>FREE delivery</code>, because its cost is <code>$0.00</code>.</p>
+
+  <h2>2. What Was Happening Before</h2>
+  <p>The RAG flow was already doing useful work:</p>
+  <ul>
+    <li>It detected the question as delivery-related.</li>
+    <li>It retrieved delivery documents.</li>
+    <li>It included <code>FREE delivery</code> in the sources.</li>
+  </ul>
+  <p>But the top result was wrong:</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Rank Before Fix</th>
+        <th>Delivery Option</th>
+        <th>Price</th>
+        <th>Why It Appeared There</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>UPS3 delivery</td>
+        <td>$2.55</td>
+        <td>Higher semantic/vector score for the word "cheap"</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>FREE delivery</td>
+        <td>$0.00</td>
+        <td>Correct cheapest option, but lower semantic/vector score</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>UPS1 delivery</td>
+        <td>$10.00</td>
+        <td>Relevant delivery option, but not cheap</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>3. Root Cause</h2>
+  <p>The app was treating "cheapest" like a language similarity problem. That is only half right.</p>
+  <p>For this question, the app must combine:</p>
+  <ul>
+    <li><strong>Retrieval:</strong> Find delivery options relevant to the question.</li>
+    <li><strong>Structured ranking:</strong> Sort those relevant options by actual numeric price.</li>
+  </ul>
+  <p>The retrieval layer found the right documents, but the answer layer used the first semantic match as the top answer.</p>
+
+  <h2>4. Remedy Taken</h2>
+  <p>We added a structured ordering step in <code>Infrastructure/Services/AiChatService.cs</code>.</p>
+  <p>Instead of immediately taking the first 3 vector results, the service now:</p>
+  <ul>
+    <li>Retrieves candidate matches.</li>
+    <li>Checks whether the question asks for <code>cheapest</code>, <code>lowest price</code>, or <code>least expensive</code>.</li>
+    <li>Sorts those matches by real <code>metadata["price"]</code>.</li>
+    <li>Uses AI score only as a tie-breaker when prices are equal.</li>
+  </ul>
+
+  <h2>5. Code That Fixes It</h2>
+  <pre>return matches
+    .OrderBy(match =&gt; TryGetMetadataDouble(match.Chunk, "price", out var price)
+        ? price
+        : double.MaxValue)
+    .ThenByDescending(match =&gt; match.Score)
+    .ThenBy(match =&gt; match.Chunk.Title)
+    .ToList();</pre>
+
+  <h3>How This Works</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Step</th>
+        <th>Meaning</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>OrderBy(price)</code></td>
+        <td>Lowest price comes first, so <code>$0.00</code> beats <code>$2.55</code>.</td>
+      </tr>
+      <tr>
+        <td><code>double.MaxValue</code></td>
+        <td>If a match has no price, push it to the end instead of letting it win.</td>
+      </tr>
+      <tr>
+        <td><code>ThenByDescending(score)</code></td>
+        <td>If two options have the same price, prefer the stronger AI retrieval match.</td>
+      </tr>
+      <tr>
+        <td><code>ThenBy(title)</code></td>
+        <td>If still tied, sort alphabetically so the output is stable.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>6. Example After Fix</h2>
+  <p>Input question:</p>
+  <pre>Which delivery option is cheapest?</pre>
+  <p>Result after the fix:</p>
+  <pre>I found these relevant delivery options: FREE delivery, UPS3 delivery, UPS2 delivery.
+The top match is FREE delivery. Delivery option: FREE. Estimated delivery time:
+1-2 Weeks. Cost: $0.00. Details: Free! You get what you pay for</pre>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Rank After Fix</th>
+        <th>Delivery Option</th>
+        <th>Price</th>
+        <th>Reason</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>FREE delivery</td>
+        <td>$0.00</td>
+        <td>Lowest numeric price</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>UPS3 delivery</td>
+        <td>$2.55</td>
+        <td>Next cheapest retrieved option</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>UPS2 delivery</td>
+        <td>$5.00</td>
+        <td>Next cheapest retrieved option</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>7. Verification</h2>
+  <ul>
+    <li><span class="pass">Build passed</span> using <code>dotnet build API/API.csproj</code>.</li>
+    <li><span class="pass">Live API retest passed</span> for <code>Which delivery option is cheapest?</code>.</li>
+    <li><span class="pass">Unsupported question behavior still works</span> for <code>Do you offer cash on delivery?</code>.</li>
+    <li><span class="pass">Product cheapest behavior still works</span> for <code>Which hat is cheapest?</code>.</li>
+  </ul>
+
+  <h2>8. Lesson For RAG</h2>
+  <p>RAG should not use vector similarity for everything. Vector retrieval is good at finding relevant text, but business questions often need structured rules after retrieval.</p>
+  <p>For this app:</p>
+  <ul>
+    <li>Use AI/vector search to find relevant products, delivery methods, and policies.</li>
+    <li>Use structured fields like <code>price</code>, <code>deliveryTime</code>, <code>brand</code>, and <code>type</code> for exact filtering and sorting.</li>
+    <li>Use an LLM later only to write a natural final answer from the verified sources.</li>
+  </ul>
+
+  <h2>9. Remaining Nice-To-Have</h2>
+  <p><span class="warn">Still not full LLM generation:</span> The app still uses template wording like "I found these relevant results." The retrieval and ranking are now better, but an LLM can later improve answer wording while staying grounded in the retrieved sources.</p>
+</body>
+</html>

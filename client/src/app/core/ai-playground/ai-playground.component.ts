@@ -14,7 +14,7 @@ export class AiPlaygroundComponent {
   error: string | null = null;
 
   samplePrompts = [
-    'show me nike products',
+    'show me boots',
     'find affordable products under 100',
     'what delivery options do you have?'
   ];

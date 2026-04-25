@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using Azure;
@@ -38,14 +39,18 @@ namespace Infrastructure.Services
             _memoryCache = memoryCache;
         }
 
-        public async Task<IReadOnlyList<AiSearchMatch>> SearchAsync(string question, int maxResults = 5)
+        public async Task<IReadOnlyList<AiSearchMatch>> SearchAsync(
+            string question,
+            int maxResults = 5,
+            string preferredSourceType = null,
+            double? maximumPrice = null)
         {
             if (string.IsNullOrWhiteSpace(question))
             {
                 return Array.Empty<AiSearchMatch>();
             }
 
-            var azureMatches = await SearchAzureAsync(question, maxResults);
+            var azureMatches = await SearchAzureAsync(question, maxResults, preferredSourceType, maximumPrice);
             if (azureMatches.Count > 0)
             {
                 return azureMatches;
@@ -53,10 +58,14 @@ namespace Infrastructure.Services
 
             _logger.LogInformation("Azure RAG search returned no matches or is unavailable. Falling back to in-memory retrieval.");
 
-            return await SearchInMemoryAsync(question, maxResults);
+            return await SearchInMemoryAsync(question, maxResults, preferredSourceType, maximumPrice);
         }
 
-        private async Task<IReadOnlyList<AiSearchMatch>> SearchAzureAsync(string question, int maxResults)
+        private async Task<IReadOnlyList<AiSearchMatch>> SearchAzureAsync(
+            string question,
+            int maxResults,
+            string preferredSourceType,
+            double? maximumPrice)
         {
             var endpoint = _config["AzureSearch:Endpoint"];
             var apiKey = _config["AzureSearch:ApiKey"];
@@ -88,6 +97,23 @@ namespace Infrastructure.Services
                 {
                     Size = maxResults
                 };
+
+                var filters = new List<string>();
+
+                if (!string.IsNullOrWhiteSpace(preferredSourceType))
+                {
+                    filters.Add($"sourceType eq '{preferredSourceType}'");
+                }
+
+                if (maximumPrice.HasValue)
+                {
+                    filters.Add($"price lt {maximumPrice.Value.ToString(CultureInfo.InvariantCulture)}");
+                }
+
+                if (filters.Count > 0)
+                {
+                    searchOptions.Filter = string.Join(" and ", filters);
+                }
 
                 searchOptions.Select.Add("id");
                 searchOptions.Select.Add("sourceType");
@@ -129,7 +155,11 @@ namespace Infrastructure.Services
             }
         }
 
-        private async Task<IReadOnlyList<AiSearchMatch>> SearchInMemoryAsync(string question, int maxResults)
+        private async Task<IReadOnlyList<AiSearchMatch>> SearchInMemoryAsync(
+            string question,
+            int maxResults,
+            string preferredSourceType,
+            double? maximumPrice)
         {
             var cacheEntry = await GetDocumentEmbeddingCacheAsync();
             if (cacheEntry.Chunks.Count == 0)
@@ -147,11 +177,25 @@ namespace Infrastructure.Services
 
             LogEmbeddingPreview(question, cacheEntry.Chunks, cacheEntry.DocumentEmbeddings.Prepend(queryVector).ToList());
 
-            return cacheEntry.Chunks.Select((chunk, index) => new AiSearchMatch
+            var candidateMatches = cacheEntry.Chunks.Select((chunk, index) => new AiSearchMatch
                 {
                     Chunk = chunk,
                     Score = CosineSimilarity(queryVector, cacheEntry.DocumentEmbeddings[index])
-                })
+                });
+
+            if (!string.IsNullOrWhiteSpace(preferredSourceType))
+            {
+                candidateMatches = candidateMatches.Where(match =>
+                    string.Equals(match.Chunk.SourceType, preferredSourceType, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (maximumPrice.HasValue)
+            {
+                candidateMatches = candidateMatches.Where(match =>
+                    TryGetMetadataDouble(match.Chunk, "price", out var price) && price < maximumPrice.Value);
+            }
+
+            return candidateMatches
                 .Where(match => match.Score > 0)
                 .OrderByDescending(match => match.Score)
                 .ThenBy(match => match.Chunk.Title)
@@ -196,6 +240,14 @@ namespace Infrastructure.Services
             {
                 metadata[key] = value;
             }
+        }
+
+        private static bool TryGetMetadataDouble(AiDocumentChunk chunk, string key, out double value)
+        {
+            value = 0;
+
+            return chunk.Metadata.TryGetValue(key, out var rawValue)
+                && double.TryParse(rawValue, NumberStyles.Any, CultureInfo.InvariantCulture, out value);
         }
 
         private async Task<DocumentEmbeddingCacheEntry> GetDocumentEmbeddingCacheAsync()

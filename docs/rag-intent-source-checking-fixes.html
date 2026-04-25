@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>RAG Fixes - Intent Filtering and Source Checking</title>
+  <style>
+    @page {
+      margin: 0.7in;
+    }
+
+    body {
+      color: #1f2933;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 13px;
+      line-height: 1.48;
+      margin: 0;
+    }
+
+    h1 {
+      color: #102a43;
+      font-size: 25px;
+      margin: 0 0 6px;
+    }
+
+    h2 {
+      border-bottom: 1px solid #d9e2ec;
+      color: #243b53;
+      font-size: 17px;
+      margin: 24px 0 8px;
+      padding-bottom: 4px;
+    }
+
+    h3 {
+      color: #334e68;
+      font-size: 14px;
+      margin: 16px 0 6px;
+    }
+
+    p {
+      margin: 6px 0;
+    }
+
+    ul {
+      margin: 6px 0 10px 20px;
+      padding: 0;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    code {
+      background: #f0f4f8;
+      border-radius: 3px;
+      color: #102a43;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+      padding: 1px 4px;
+    }
+
+    pre {
+      background: #102a43;
+      border-radius: 6px;
+      color: #f0f4f8;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 11px;
+      line-height: 1.45;
+      margin: 10px 0;
+      overflow-wrap: break-word;
+      padding: 12px;
+      white-space: pre-wrap;
+    }
+
+    table {
+      border-collapse: collapse;
+      margin: 10px 0;
+      width: 100%;
+    }
+
+    th,
+    td {
+      border: 1px solid #bcccdc;
+      padding: 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #d9e2ec;
+      color: #102a43;
+    }
+
+    .subtitle {
+      color: #52606d;
+      font-size: 13px;
+      margin-bottom: 18px;
+    }
+
+    .summary {
+      background: #f0f4f8;
+      border-left: 4px solid #2f80ed;
+      margin: 14px 0;
+      padding: 10px 12px;
+    }
+
+    .pass {
+      color: #0b6b3a;
+      font-weight: bold;
+    }
+
+    .warn {
+      color: #9a3412;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>RAG Fixes: Intent Filtering and Source Checking</h1>
+  <p class="subtitle">Project: eCOM-AI | Area: AI chat retrieval safety and relevance</p>
+
+  <div class="summary">
+    <p><strong>Short version:</strong> The app had two common RAG problems: it could retrieve the wrong type of source, and it could answer from sources that were related but did not actually support the question. We fixed this with intent filtering and source coverage checking.</p>
+  </div>
+
+  <h2>1. Issue A: Intent / Source-Type Filtering</h2>
+  <p>Some questions should search products, while others should search policy or delivery documents.</p>
+
+  <h3>Example Before Fix</h3>
+  <pre>Question:
+What products are available under 20 dollars?
+
+Bad behavior:
+The system returned delivery options, especially FREE delivery.</pre>
+
+  <p>Why this happened:</p>
+  <ul>
+    <li>The phrase <code>under 20 dollars</code> matched cheap delivery documents.</li>
+    <li>Vector search knew the words were related to price, but it did not understand the user asked for products.</li>
+    <li>The app needed to restrict the search to <code>sourceType = product</code>.</li>
+  </ul>
+
+  <h3>Remedy Taken</h3>
+  <p>We added intent detection in <code>Infrastructure/Services/AiChatService.cs</code>.</p>
+  <p>The app now detects product language and delivery language before retrieval.</p>
+
+  <pre>private static string DetectPreferredSourceType(string question)
+{
+    var normalizedQuestion = question.ToLowerInvariant();
+
+    if (ContainsAny(normalizedQuestion, "delivery", "shipping", "ship", "shipped"))
+    {
+        return PolicySourceType;
+    }
+
+    if (ContainsAny(
+        normalizedQuestion,
+        "product",
+        "products",
+        "hat",
+        "hats",
+        "glove",
+        "gloves",
+        "boot",
+        "boots",
+        "board",
+        "boards",
+        "react",
+        "netcore",
+        "angular",
+        "under",
+        "cheapest",
+        "expensive"))
+    {
+        return ProductSourceType;
+    }
+
+    return null;
+}</pre>
+
+  <p>That detected source type is passed to the retriever:</p>
+  <pre>_aiRetrieverService.SearchAsync(question, 5, preferredSourceType, maximumPrice)</pre>
+
+  <p>The retriever then filters candidate matches by <code>sourceType</code>:</p>
+  <pre>if (!string.IsNullOrWhiteSpace(preferredSourceType))
+{
+    candidateMatches = candidateMatches.Where(match =&gt;
+        string.Equals(match.Chunk.SourceType, preferredSourceType, StringComparison.OrdinalIgnoreCase));
+}</pre>
+
+  <h3>Result After Fix</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Question</th>
+        <th>Expected Source Type</th>
+        <th>After Fix</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>What products are available under 20 dollars?</td>
+        <td>product</td>
+        <td><span class="pass">Returns products under $20, not delivery options.</span></td>
+      </tr>
+      <tr>
+        <td>What delivery options are available?</td>
+        <td>policy</td>
+        <td><span class="pass">Returns delivery policy documents.</span></td>
+      </tr>
+      <tr>
+        <td>Show me hats</td>
+        <td>product</td>
+        <td><span class="pass">Returns hat products.</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>2. Issue B: Price Filtering</h2>
+  <p>For questions with a maximum price, retrieval alone is not enough. The app must use the real numeric price field.</p>
+
+  <h3>Example</h3>
+  <pre>Question:
+What products are available under 20 dollars?</pre>
+
+  <p>Intent detection says this is a product question. Price extraction then detects the maximum price:</p>
+  <pre>private static double? DetectMaximumPrice(string question)
+{
+    var match = Regex.Match(
+        question,
+        @"\b(?:under|below|less than|cheaper than)\s*\$?\s*(\d+(?:\.\d+)?)",
+        RegexOptions.IgnoreCase);
+
+    if (!match.Success)
+    {
+        return null;
+    }
+
+    if (double.TryParse(match.Groups[1].Value, out var maximumPrice))
+    {
+        return maximumPrice;
+    }
+
+    return null;
+}</pre>
+
+  <p>The retriever uses that value to keep only documents with a real price below the number:</p>
+  <pre>if (maximumPrice.HasValue)
+{
+    candidateMatches = candidateMatches.Where(match =&gt;
+        TryGetMetadataDouble(match.Chunk, "price", out var price)
+        &amp;&amp; price &lt; maximumPrice.Value);
+}</pre>
+
+  <h2>3. Issue C: Source Coverage Checking</h2>
+  <p>This is the safety check that prevents the app from answering from weak or unrelated sources.</p>
+
+  <h3>Example Before Fix</h3>
+  <pre>Question:
+Do you offer cash on delivery?
+
+Bad behavior:
+The retriever found delivery documents and answered with delivery options.</pre>
+
+  <p>Why this was wrong:</p>
+  <ul>
+    <li>The word <code>delivery</code> matched delivery documents.</li>
+    <li>But those documents did not mention <code>cash</code>, <code>COD</code>, or payment methods.</li>
+    <li>A related source is not always an answering source.</li>
+  </ul>
+
+  <h3>Remedy Taken</h3>
+  <p>We added <code>HasSourceCoverage</code>. It checks whether the retrieved source text actually contains the key concept needed to answer the question.</p>
+
+  <pre>if (ContainsAny(normalizedQuestion, "cash on delivery", "cod"))
+{
+    return ContainsAny(sourceText, "cash on delivery", "cod", "cash", "payment");
+}</pre>
+
+  <p>More examples of coverage checks:</p>
+  <pre>discount question  -&gt; source must mention discount, coupon, sale, or promotion
+next day question  -&gt; source must mention next day or overnight
+international      -&gt; source must mention international, worldwide, countries, or country
+return/refund      -&gt; source must mention return or refund
+warranty           -&gt; source must mention warranty or guarantee
+crypto             -&gt; source must mention crypto, cryptocurrency, or bitcoin
+store locations    -&gt; source must mention store, location, or New York</pre>
+
+  <h3>Result After Fix</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Question</th>
+        <th>Why It Should Not Answer</th>
+        <th>After Fix</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Do you offer cash on delivery?</td>
+        <td>Delivery docs do not confirm cash/COD payment.</td>
+        <td><span class="pass">Rejects safely.</span></td>
+      </tr>
+      <tr>
+        <td>Do you have discounts on hats?</td>
+        <td>Hat products exist, but no discount source exists.</td>
+        <td><span class="pass">Rejects safely.</span></td>
+      </tr>
+      <tr>
+        <td>Can I get next day delivery?</td>
+        <td>Delivery docs do not confirm next-day/overnight delivery.</td>
+        <td><span class="pass">Rejects safely.</span></td>
+      </tr>
+      <tr>
+        <td>What warranty comes with laptops?</td>
+        <td>No warranty/laptop policy is present in retrieved sources.</td>
+        <td><span class="pass">Rejects safely.</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>4. How The Fixed Flow Works</h2>
+  <pre>User question
+  -&gt; Detect source intent: product or policy
+  -&gt; Detect structured filters, such as maximum price
+  -&gt; Retrieve relevant documents
+  -&gt; Apply source-type and price filters
+  -&gt; Check confidence threshold
+  -&gt; Check source coverage
+  -&gt; Build answer with sources</pre>
+
+  <h2>5. Why This Matters Before Adding an LLM</h2>
+  <p>An LLM can write better answers, but it should not be trusted to guess policies or prices.</p>
+  <p>These fixes make the RAG pipeline safer before LLM generation:</p>
+  <ul>
+    <li><strong>Intent filtering</strong> keeps product questions away from policy documents and policy questions away from products.</li>
+    <li><strong>Price filtering</strong> uses real structured prices instead of language similarity.</li>
+    <li><strong>Source coverage checking</strong> stops the app from answering unsupported questions.</li>
+  </ul>
+
+  <h2>6. Remaining Nice-To-Have</h2>
+  <p><span class="warn">The final answer is still template-based.</span> The app now retrieves and validates sources better, but an LLM can later turn verified sources into more natural answers.</p>
+  <p>Recommended LLM role later:</p>
+  <ul>
+    <li>Use only the retrieved and validated sources.</li>
+    <li>Write a clean customer-facing answer.</li>
+    <li>Cite the product or policy sources.</li>
+    <li>Say it cannot confirm something when the source coverage check fails.</li>
+  </ul>
+</body>
+</html>
