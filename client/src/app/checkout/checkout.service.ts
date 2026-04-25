@@ -17,6 +17,10 @@ export class CheckoutService {
     return this.http.post(this.baseUrl + 'orders', order);
   }
 
+  getStripeConfig() {
+    return this.http.get<{publishableKey: string}>(this.baseUrl + 'payments/config');
+  }
+
   getDeliveryMethods() {
     return this.http.get(this.baseUrl + 'orders/deliveryMethods').pipe(
       map((dm: IDeliveryMethod[]) => {

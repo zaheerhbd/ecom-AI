@@ -36,6 +36,18 @@ namespace API.Controllers
             return basket;
         }
 
+        [HttpGet("config")]
+        public ActionResult<object> GetStripeConfig()
+        {
+            return Ok(new
+            {
+                PublishableKey = HttpContext.RequestServices
+                    .GetService(typeof(IConfiguration)) is IConfiguration config
+                    ? config.GetSection("StripeSettings:PublishableKey").Value
+                    : null
+            });
+        }
+
         [HttpPost("webhook")]
         public async Task<ActionResult> StripeWebhook()
         {

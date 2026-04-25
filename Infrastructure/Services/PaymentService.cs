@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -26,7 +27,15 @@ namespace Infrastructure.Services
 
         public async Task<CustomerBasket> CreateOrUpdatePaymentIntent(string basketId)
         {
-            StripeConfiguration.ApiKey = _config["StripeSettings:SecretKey"];
+            var stripeSecretKey = _config["StripeSettings:SecretKey"];
+
+            if (string.IsNullOrWhiteSpace(stripeSecretKey))
+            {
+                throw new InvalidOperationException(
+                    "Stripe secret key is not configured. Set StripeSettings:SecretKey in API configuration before creating orders.");
+            }
+
+            StripeConfiguration.ApiKey = stripeSecretKey;
 
             var basket = await _basketRepository.GetBasketAsync(basketId);
 

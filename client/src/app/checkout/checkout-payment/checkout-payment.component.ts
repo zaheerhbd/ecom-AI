@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, Input, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, Input, OnDestroy, ViewChild } from '@angular/core';
 import { FormGroup } from '@angular/forms';
 import { NavigationExtras, Router } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
@@ -26,6 +26,7 @@ export class CheckoutPaymentComponent implements AfterViewInit, OnDestroy {
   cardErrors: any;
   cardHandler = this.onChange.bind(this);
   loading = false;
+  stripeReady = false;
   cardNumberValid = false;
   cardExpiryValid = false;
   cardCvcValid = false;
@@ -33,8 +34,25 @@ export class CheckoutPaymentComponent implements AfterViewInit, OnDestroy {
   constructor(private basketService: BasketService, private checkoutService: CheckoutService,
     private toastr: ToastrService, private router: Router) { }
 
-  ngAfterViewInit(): void {
-    this.stripe = Stripe('pk_test_2PZ84pFKu2MddUgGDG521v9m00SlLWySIR');
+  async ngAfterViewInit(): Promise<void> {
+    try {
+      const config = await this.checkoutService.getStripeConfig().toPromise();
+
+      if (!config?.publishableKey) {
+        this.toastr.error('Stripe publishable key is not configured.');
+        return;
+      }
+
+      this.stripe = Stripe(config.publishableKey);
+      this.initializeStripeElements();
+      this.stripeReady = true;
+    } catch (error) {
+      console.log(error);
+      this.toastr.error('Unable to load Stripe configuration.');
+    }
+  }
+
+  private initializeStripeElements(): void {
     const elements = this.stripe.elements();
 
     this.cardNumber = elements.create('cardNumber');
@@ -51,9 +69,9 @@ export class CheckoutPaymentComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.cardNumber.destroy();
-    this.cardExpiry.destroy();
-    this.cardCvc.destroy();
+    this.cardNumber?.destroy();
+    this.cardExpiry?.destroy();
+    this.cardCvc?.destroy();
   }
 
   onChange(event) {
@@ -77,6 +95,13 @@ export class CheckoutPaymentComponent implements AfterViewInit, OnDestroy {
 
   async submitOrder() {
     this.loading = true;
+
+    if (!this.stripeReady) {
+      this.toastr.error('Stripe is not ready yet. Refresh the page and try again.');
+      this.loading = false;
+      return;
+    }
+
     const basket = this.basketService.getCurrentBasketValue();
     if (!basket?.clientSecret) {
       this.toastr.error('Payment could not be initialized. Please go back to review and try again.');
