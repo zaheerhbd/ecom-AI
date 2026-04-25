@@ -18,13 +18,16 @@ namespace Infrastructure.Services
         private const string PolicySourceType = "policy";
 
         private readonly IAiRetrieverService _aiRetrieverService;
+        private readonly IAiAnswerGeneratorService _aiAnswerGeneratorService;
         private readonly ILogger<AiChatService> _logger;
 
         public AiChatService(
             IAiRetrieverService aiRetrieverService,
+            IAiAnswerGeneratorService aiAnswerGeneratorService,
             ILogger<AiChatService> logger)
         {
             _aiRetrieverService = aiRetrieverService;
+            _aiAnswerGeneratorService = aiAnswerGeneratorService;
             _logger = logger;
         }
 
@@ -112,10 +115,12 @@ namespace Infrastructure.Services
             var topChunks = matches
                 .Select(match => match.Chunk)
                 .ToList();
+            var fallbackAnswer = BuildAnswer(topChunks);
+            var generatedAnswer = await _aiAnswerGeneratorService.GenerateAnswerAsync(question, topChunks, fallbackAnswer);
 
             return new AiChatResult
             {
-                Answer = BuildAnswer(topChunks),
+                Answer = generatedAnswer,
                 Sources = topChunks.Select(ToSourceDocument).ToList(),
                 FollowUpSuggestions = BuildFollowUps(topChunks)
             };

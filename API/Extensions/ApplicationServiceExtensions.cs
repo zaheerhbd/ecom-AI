@@ -20,6 +20,7 @@ namespace API.Extensions
             services.AddScoped<IAiDocumentService, AiDocumentService>();
             services.AddScoped<LocalHashEmbeddingService>();
             services.AddScoped<IAiEmbeddingService, OpenAiEmbeddingService>();
+            services.AddScoped<IAiAnswerGeneratorService, OpenAiAnswerGeneratorService>();
             services.AddScoped<IAiRetrieverService, AiRetrieverService>();
             services.AddScoped<IAiChatService, AiChatService>();
             services.AddScoped<IAzureAiSearchService, AzureAiSearchService>();
